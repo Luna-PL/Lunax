@@ -1,0 +1,71 @@
+package org.luna.lunax;
+module host;
+
+extern "C" fn native_init(
+    argc: i32, argv: raw<raw<u8> >
+) -> i32 as "lunax_host_init";
+extern "C" fn native_arg_count() -> i32 as "lunax_host_arg_count";
+extern "C" fn native_arg(index: i32) -> cstr as "lunax_host_arg";
+extern "C" fn native_text_equals(
+    left: cstr, right: cstr
+) -> i32 as "lunax_host_text_equals";
+extern "C" fn native_out_line(text: cstr) as "lunax_host_out_line";
+extern "C" fn native_err_line(text: cstr) as "lunax_host_err_line";
+extern "C" fn native_download(
+    url: cstr, output_path: cstr
+) -> i32 as "lunax_host_download";
+extern "C" fn native_install(
+    kind: cstr, version: cstr, url: cstr
+) -> i32 as "lunax_host_install";
+extern "C" fn native_list(kind: cstr) -> i32 as "lunax_host_list";
+extern "C" fn native_use(
+    kind: cstr, version: cstr
+) -> i32 as "lunax_host_use";
+extern "C" fn native_package_fetch(
+    package_id: cstr, version: cstr, url: cstr
+) -> i32 as "lunax_host_package_fetch";
+extern "C" fn native_package_list(
+    package_id: cstr
+) -> i32 as "lunax_host_package_list";
+extern "C" fn native_print_env() -> i32 as "lunax_host_print_env";
+extern "C" fn native_print_backend() -> i32 as "lunax_host_print_backend";
+extern "C" fn native_print_compiler() -> i32 as "lunax_host_print_compiler";
+extern "C" fn native_forward_luna(
+    first_argument: i32
+) -> i32 as "lunax_host_forward_luna";
+
+export fn init(argc: i32, argv: raw<raw<u8> >) -> i32 {
+    return native_init(argc, argv);
+}
+
+export fn arg_count() -> i32 { return native_arg_count(); }
+export fn arg(index: i32) -> cstr { return native_arg(index); }
+export fn equals(left: cstr, right: cstr) -> bool {
+    return native_text_equals(left, right) != 0;
+}
+export fn out_line(text: cstr) -> unit { native_out_line(text); }
+export fn err_line(text: cstr) -> unit { native_err_line(text); }
+export fn download(url: cstr, output_path: cstr) -> i32 {
+    return native_download(url, output_path);
+}
+export fn install(kind: cstr, version: cstr, url: cstr) -> i32 {
+    return native_install(kind, version, url);
+}
+export fn list(kind: cstr) -> i32 { return native_list(kind); }
+export fn use(kind: cstr, version: cstr) -> i32 {
+    return native_use(kind, version);
+}
+export fn package_fetch(
+    package_id: cstr, version: cstr, url: cstr
+) -> i32 {
+    return native_package_fetch(package_id, version, url);
+}
+export fn package_list(package_id: cstr) -> i32 {
+    return native_package_list(package_id);
+}
+export fn print_env() -> i32 { return native_print_env(); }
+export fn print_backend() -> i32 { return native_print_backend(); }
+export fn print_compiler() -> i32 { return native_print_compiler(); }
+export fn forward_luna(first_argument: i32) -> i32 {
+    return native_forward_luna(first_argument);
+}

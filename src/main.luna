@@ -1,0 +1,8 @@
+package org.luna.lunax;
+module application;
+
+fn main(argc: i32, argv: raw<raw<u8> >) -> i32 {
+    let initialized = host::init(argc, argv);
+    if initialized != 0 { return initialized; }
+    return commands::run();
+}

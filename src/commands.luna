@@ -1,0 +1,114 @@
+package org.luna.lunax;
+module commands;
+
+fn usage() -> unit {
+    host::out_line("Lunax 0.1.0 - Luna ecosystem manager");
+    host::out_line("");
+    host::out_line("Usage:");
+    host::out_line("  lunax help");
+    host::out_line("  lunax version");
+    host::out_line("  lunax env");
+    host::out_line("  lunax backend");
+    host::out_line("  lunax which");
+    host::out_line("  lunax download <url> <output>");
+    host::out_line("  lunax install <compiler|toolchain|sdk> <version> <url>");
+    host::out_line("  lunax list [compiler|toolchain|sdk]");
+    host::out_line("  lunax use <compiler|toolchain|sdk> <version>");
+    host::out_line("  lunax package fetch <package-id> <version> <url>");
+    host::out_line("  lunax package list [package-id]");
+    host::out_line("  lunax luna <luna arguments...>");
+    host::out_line("  lunax <any Luna CLI command...>");
+}
+
+fn usage_error(message: cstr) -> i32 {
+    host::err_line(message);
+    host::err_line("Run `lunax help` for usage.");
+    return 2;
+}
+
+export fn run() -> i32 {
+    let count = host::arg_count();
+    if count <= 1 {
+        usage();
+        return 0;
+    }
+
+    let command = host::arg(1);
+    if host::equals(command, "help") || host::equals(command, "--help") {
+        usage();
+        return 0;
+    }
+    if host::equals(command, "version") ||
+       host::equals(command, "--lunax-version") {
+        host::out_line("lunax 0.1.0");
+        return 0;
+    }
+    if host::equals(command, "env") {
+        if count != 2 { return usage_error("`lunax env` takes no arguments"); }
+        return host::print_env();
+    }
+    if host::equals(command, "backend") {
+        if count != 2 { return usage_error("`lunax backend` takes no arguments"); }
+        return host::print_backend();
+    }
+    if host::equals(command, "which") {
+        if count != 2 { return usage_error("`lunax which` takes no arguments"); }
+        return host::print_compiler();
+    }
+    if host::equals(command, "download") {
+        if count != 4 {
+            return usage_error("expected `lunax download <url> <output>`");
+        }
+        return host::download(host::arg(2), host::arg(3));
+    }
+    if host::equals(command, "install") {
+        if count != 5 {
+            return usage_error(
+                "expected `lunax install <compiler|toolchain|sdk> <version> <url>`"
+            );
+        }
+        return host::install(host::arg(2), host::arg(3), host::arg(4));
+    }
+    if host::equals(command, "list") {
+        if count == 2 { return host::list("all"); }
+        if count == 3 { return host::list(host::arg(2)); }
+        return usage_error("expected `lunax list [compiler|toolchain|sdk]`");
+    }
+    if host::equals(command, "use") {
+        if count != 4 {
+            return usage_error(
+                "expected `lunax use <compiler|toolchain|sdk> <version>`"
+            );
+        }
+        return host::use(host::arg(2), host::arg(3));
+    }
+    if host::equals(command, "package") {
+        if count < 3 {
+            return usage_error("expected `lunax package <fetch|list> ...`");
+        }
+        let operation = host::arg(2);
+        if host::equals(operation, "fetch") {
+            if count != 6 {
+                return usage_error(
+                    "expected `lunax package fetch <package-id> <version> <url>`"
+                );
+            }
+            return host::package_fetch(
+                host::arg(3), host::arg(4), host::arg(5)
+            );
+        }
+        if host::equals(operation, "list") {
+            if count == 3 { return host::package_list("all"); }
+            if count == 4 { return host::package_list(host::arg(3)); }
+            return usage_error("expected `lunax package list [package-id]`");
+        }
+        return usage_error("unknown `lunax package` operation");
+    }
+    if host::equals(command, "luna") {
+        return host::forward_luna(2);
+    }
+
+    // Lunax inherits Luna's CLI: commands not owned by Lunax are forwarded
+    // verbatim to the selected/default compiler.
+    return host::forward_luna(1);
+}

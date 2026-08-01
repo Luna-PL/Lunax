@@ -1,0 +1,10 @@
+/build/
+/.cache/
+/.lunax/
+*.ll
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
