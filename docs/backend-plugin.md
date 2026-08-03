@@ -16,6 +16,10 @@ The descriptor and `context` remain valid for the process lifetime. The callback
 - return a stable `LunaxDownloadStatusV1` value;
 - never release, rename, or delete resources owned by Lunax.
 
+Before invoking the callback, Lunax core creates the destination parent directory and rejects
+an existing output. After a successful return, core verifies the caller-provided SHA-256.
+Backends own transport behavior; they do not own archive integrity or installation publication.
+
 The ABI is backend-neutral. A wget backend is intentionally not part of the 0.1 repository
 and is deferred until after Luna 0.3; it will be a separately distributed shared library.
 The build contains a non-installed `fake-dynamic` test module solely to exercise descriptor

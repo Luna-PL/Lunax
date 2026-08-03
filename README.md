@@ -32,11 +32,11 @@ lunax version
 lunax env
 lunax backend
 lunax which
-lunax download <url> <output>
-lunax install <compiler|toolchain|sdk> <version> <url>
+lunax download <url> <output> <sha256>
+lunax install <compiler|toolchain|sdk> <version> <url> <sha256>
 lunax list [compiler|toolchain|sdk]
 lunax use <compiler|toolchain|sdk> <version>
-lunax package fetch <package-id> <version> <url>
+lunax package fetch <package-id> <version> <url> <sha256>
 lunax package list [package-id]
 lunax luna <luna arguments...>
 lunax <any Luna CLI command...>
@@ -53,9 +53,12 @@ Lunax configuration uses `LUNAX_HOME`, `LUNAX_LUNA`, `LUNAX_DOWNLOAD_BACKEND`, a
 shell assignments for interactive use.
 
 The initial installer accepts a tar-compatible archive containing one top-level directory.
+Downloads and cached archives must match the caller-provided SHA-256. Extraction occurs in
+a sibling staging directory and is atomically published only after layout validation; failed
+staging directories are retained for inspection and never appear as installed versions.
 `package fetch` places a reverse-DNS package archive in the versioned local cache; the
 current Luna compiler does not yet resolve that cache as a registry. Lunax does not yet
-verify a checksum or signature, solve package dependencies, repair partial installs, or
-remove files. It is a practical integration demo, not yet a security-sensitive production
-package manager. See [architecture](docs/architecture.md) and the
+verify signatures, solve package dependencies, repair retained staging directories, or
+remove files. It is a practical integration tool with integrity and publication safety,
+not yet a complete production package manager. See [architecture](docs/architecture.md) and the
 [backend ABI](docs/backend-plugin.md).

@@ -12,17 +12,17 @@ extern "C" fn native_text_equals(
 extern "C" fn native_out_line(text: cstr) as "lunax_host_out_line";
 extern "C" fn native_err_line(text: cstr) as "lunax_host_err_line";
 extern "C" fn native_download(
-    url: cstr, output_path: cstr
+    url: cstr, output_path: cstr, expected_sha256: cstr
 ) -> i32 as "lunax_host_download";
 extern "C" fn native_install(
-    kind: cstr, version: cstr, url: cstr
+    kind: cstr, version: cstr, url: cstr, expected_sha256: cstr
 ) -> i32 as "lunax_host_install";
 extern "C" fn native_list(kind: cstr) -> i32 as "lunax_host_list";
 extern "C" fn native_use(
     kind: cstr, version: cstr
 ) -> i32 as "lunax_host_use";
 extern "C" fn native_package_fetch(
-    package_id: cstr, version: cstr, url: cstr
+    package_id: cstr, version: cstr, url: cstr, expected_sha256: cstr
 ) -> i32 as "lunax_host_package_fetch";
 extern "C" fn native_package_list(
     package_id: cstr
@@ -45,20 +45,26 @@ export fn equals(left: cstr, right: cstr) -> bool {
 }
 export fn out_line(text: cstr) -> unit { native_out_line(text); }
 export fn err_line(text: cstr) -> unit { native_err_line(text); }
-export fn download(url: cstr, output_path: cstr) -> i32 {
-    return native_download(url, output_path);
+export fn download(
+    url: cstr, output_path: cstr, expected_sha256: cstr
+) -> i32 {
+    return native_download(url, output_path, expected_sha256);
 }
-export fn install(kind: cstr, version: cstr, url: cstr) -> i32 {
-    return native_install(kind, version, url);
+export fn install(
+    kind: cstr, version: cstr, url: cstr, expected_sha256: cstr
+) -> i32 {
+    return native_install(kind, version, url, expected_sha256);
 }
 export fn list(kind: cstr) -> i32 { return native_list(kind); }
 export fn use(kind: cstr, version: cstr) -> i32 {
     return native_use(kind, version);
 }
 export fn package_fetch(
-    package_id: cstr, version: cstr, url: cstr
+    package_id: cstr, version: cstr, url: cstr, expected_sha256: cstr
 ) -> i32 {
-    return native_package_fetch(package_id, version, url);
+    return native_package_fetch(
+        package_id, version, url, expected_sha256
+    );
 }
 export fn package_list(package_id: cstr) -> i32 {
     return native_package_list(package_id);

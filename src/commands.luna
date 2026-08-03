@@ -10,11 +10,11 @@ fn usage() -> unit {
     host::out_line("  lunax env");
     host::out_line("  lunax backend");
     host::out_line("  lunax which");
-    host::out_line("  lunax download <url> <output>");
-    host::out_line("  lunax install <compiler|toolchain|sdk> <version> <url>");
+    host::out_line("  lunax download <url> <output> <sha256>");
+    host::out_line("  lunax install <compiler|toolchain|sdk> <version> <url> <sha256>");
     host::out_line("  lunax list [compiler|toolchain|sdk]");
     host::out_line("  lunax use <compiler|toolchain|sdk> <version>");
-    host::out_line("  lunax package fetch <package-id> <version> <url>");
+    host::out_line("  lunax package fetch <package-id> <version> <url> <sha256>");
     host::out_line("  lunax package list [package-id]");
     host::out_line("  lunax luna <luna arguments...>");
     host::out_line("  lunax <any Luna CLI command...>");
@@ -56,18 +56,22 @@ export fn run() -> i32 {
         return host::print_compiler();
     }
     if host::equals(command, "download") {
-        if count != 4 {
-            return usage_error("expected `lunax download <url> <output>`");
-        }
-        return host::download(host::arg(2), host::arg(3));
-    }
-    if host::equals(command, "install") {
         if count != 5 {
             return usage_error(
-                "expected `lunax install <compiler|toolchain|sdk> <version> <url>`"
+                "expected `lunax download <url> <output> <sha256>`"
             );
         }
-        return host::install(host::arg(2), host::arg(3), host::arg(4));
+        return host::download(host::arg(2), host::arg(3), host::arg(4));
+    }
+    if host::equals(command, "install") {
+        if count != 6 {
+            return usage_error(
+                "expected `lunax install <compiler|toolchain|sdk> <version> <url> <sha256>`"
+            );
+        }
+        return host::install(
+            host::arg(2), host::arg(3), host::arg(4), host::arg(5)
+        );
     }
     if host::equals(command, "list") {
         if count == 2 { return host::list("all"); }
@@ -88,13 +92,13 @@ export fn run() -> i32 {
         }
         let operation = host::arg(2);
         if host::equals(operation, "fetch") {
-            if count != 6 {
+            if count != 7 {
                 return usage_error(
-                    "expected `lunax package fetch <package-id> <version> <url>`"
+                    "expected `lunax package fetch <package-id> <version> <url> <sha256>`"
                 );
             }
             return host::package_fetch(
-                host::arg(3), host::arg(4), host::arg(5)
+                host::arg(3), host::arg(4), host::arg(5), host::arg(6)
             );
         }
         if host::equals(operation, "list") {

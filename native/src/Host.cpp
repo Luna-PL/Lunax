@@ -5,13 +5,18 @@
 #include <curl/curl.h>
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
+#include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -36,6 +41,199 @@ constexpr int kFilesystemError = 5;
 
 int gArgc = 0;
 char** gArgv = nullptr;
+
+class Sha256 {
+public:
+    void update(const unsigned char* bytes, size_t size) {
+        totalBytes_ += size;
+        while (size != 0) {
+            const size_t copied = std::min(size, block_.size() - blockSize_);
+            std::memcpy(block_.data() + blockSize_, bytes, copied);
+            blockSize_ += copied;
+            bytes += copied;
+            size -= copied;
+            if (blockSize_ == block_.size()) {
+                transform(block_.data());
+                blockSize_ = 0;
+            }
+        }
+    }
+
+    std::array<unsigned char, 32> finish() {
+        const uint64_t bitLength = totalBytes_ * 8;
+        block_[blockSize_++] = 0x80;
+        if (blockSize_ > 56) {
+            std::fill(block_.begin() + blockSize_, block_.end(), 0);
+            transform(block_.data());
+            blockSize_ = 0;
+        }
+        std::fill(block_.begin() + blockSize_, block_.begin() + 56, 0);
+        for (size_t index = 0; index < 8; ++index)
+            block_[63 - index] = static_cast<unsigned char>(bitLength >> (index * 8));
+        transform(block_.data());
+
+        std::array<unsigned char, 32> digest{};
+        for (size_t word = 0; word < state_.size(); ++word) {
+            for (size_t byte = 0; byte < 4; ++byte)
+                digest[word * 4 + byte] = static_cast<unsigned char>(
+                    state_[word] >> (24 - byte * 8));
+        }
+        return digest;
+    }
+
+private:
+    static uint32_t rotateRight(uint32_t value, uint32_t shift) {
+        return (value >> shift) | (value << (32 - shift));
+    }
+
+    void transform(const unsigned char* block) {
+        static constexpr std::array<uint32_t, 64> constants{
+            0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u,
+            0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
+            0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u,
+            0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
+            0xe49b69c1u, 0xefbe4786u, 0x0fc19dc6u, 0x240ca1ccu,
+            0x2de92c6fu, 0x4a7484aau, 0x5cb0a9dcu, 0x76f988dau,
+            0x983e5152u, 0xa831c66du, 0xb00327c8u, 0xbf597fc7u,
+            0xc6e00bf3u, 0xd5a79147u, 0x06ca6351u, 0x14292967u,
+            0x27b70a85u, 0x2e1b2138u, 0x4d2c6dfcu, 0x53380d13u,
+            0x650a7354u, 0x766a0abbu, 0x81c2c92eu, 0x92722c85u,
+            0xa2bfe8a1u, 0xa81a664bu, 0xc24b8b70u, 0xc76c51a3u,
+            0xd192e819u, 0xd6990624u, 0xf40e3585u, 0x106aa070u,
+            0x19a4c116u, 0x1e376c08u, 0x2748774cu, 0x34b0bcb5u,
+            0x391c0cb3u, 0x4ed8aa4au, 0x5b9cca4fu, 0x682e6ff3u,
+            0x748f82eeu, 0x78a5636fu, 0x84c87814u, 0x8cc70208u,
+            0x90befffau, 0xa4506cebu, 0xbef9a3f7u, 0xc67178f2u,
+        };
+
+        std::array<uint32_t, 64> words{};
+        for (size_t index = 0; index < 16; ++index) {
+            const size_t offset = index * 4;
+            words[index] = (static_cast<uint32_t>(block[offset]) << 24) |
+                (static_cast<uint32_t>(block[offset + 1]) << 16) |
+                (static_cast<uint32_t>(block[offset + 2]) << 8) |
+                static_cast<uint32_t>(block[offset + 3]);
+        }
+        for (size_t index = 16; index < words.size(); ++index) {
+            const uint32_t s0 = rotateRight(words[index - 15], 7) ^
+                rotateRight(words[index - 15], 18) ^
+                (words[index - 15] >> 3);
+            const uint32_t s1 = rotateRight(words[index - 2], 17) ^
+                rotateRight(words[index - 2], 19) ^
+                (words[index - 2] >> 10);
+            words[index] = words[index - 16] + s0 + words[index - 7] + s1;
+        }
+
+        uint32_t a = state_[0];
+        uint32_t b = state_[1];
+        uint32_t c = state_[2];
+        uint32_t d = state_[3];
+        uint32_t e = state_[4];
+        uint32_t f = state_[5];
+        uint32_t g = state_[6];
+        uint32_t h = state_[7];
+        for (size_t index = 0; index < words.size(); ++index) {
+            const uint32_t sum1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^
+                rotateRight(e, 25);
+            const uint32_t choose = (e & f) ^ (~e & g);
+            const uint32_t first = h + sum1 + choose + constants[index] + words[index];
+            const uint32_t sum0 = rotateRight(a, 2) ^ rotateRight(a, 13) ^
+                rotateRight(a, 22);
+            const uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+            const uint32_t second = sum0 + majority;
+            h = g;
+            g = f;
+            f = e;
+            e = d + first;
+            d = c;
+            c = b;
+            b = a;
+            a = first + second;
+        }
+        state_[0] += a;
+        state_[1] += b;
+        state_[2] += c;
+        state_[3] += d;
+        state_[4] += e;
+        state_[5] += f;
+        state_[6] += g;
+        state_[7] += h;
+    }
+
+    std::array<uint32_t, 8> state_{
+        0x6a09e667u, 0xbb67ae85u, 0x3c6ef372u, 0xa54ff53au,
+        0x510e527fu, 0x9b05688cu, 0x1f83d9abu, 0x5be0cd19u,
+    };
+    std::array<unsigned char, 64> block_{};
+    size_t blockSize_ = 0;
+    uint64_t totalBytes_ = 0;
+};
+
+bool validSha256(const std::string& digest) {
+    return digest.size() == 64 &&
+        std::all_of(digest.begin(), digest.end(), [](unsigned char byte) {
+            return (byte >= '0' && byte <= '9') ||
+                (byte >= 'a' && byte <= 'f') ||
+                (byte >= 'A' && byte <= 'F');
+        });
+}
+
+std::string lowercase(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char byte) {
+                       if (byte >= 'A' && byte <= 'F')
+                           return static_cast<char>(byte - 'A' + 'a');
+                       return static_cast<char>(byte);
+                   });
+    return value;
+}
+
+std::string sha256File(const fs::path& path, std::string& error) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        error = "cannot open archive for SHA-256 verification";
+        return {};
+    }
+    Sha256 hash;
+    std::array<char, 16384> buffer{};
+    while (input) {
+        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const std::streamsize count = input.gcount();
+        if (count > 0)
+            hash.update(reinterpret_cast<const unsigned char*>(buffer.data()),
+                        static_cast<size_t>(count));
+    }
+    if (!input.eof()) {
+        error = "cannot read archive for SHA-256 verification";
+        return {};
+    }
+    const auto digest = hash.finish();
+    std::ostringstream text;
+    text << std::hex << std::setfill('0');
+    for (unsigned char byte : digest)
+        text << std::setw(2) << static_cast<unsigned int>(byte);
+    return text.str();
+}
+
+int verifySha256(const fs::path& path, const std::string& expected) {
+    if (!validSha256(expected)) {
+        std::cerr << "lunax: expected SHA-256 must contain exactly 64 hex digits\n";
+        return kUsageError;
+    }
+    std::string error;
+    const std::string actual = sha256File(path, error);
+    if (!error.empty()) {
+        std::cerr << "lunax: " << error << " at '" << path.string() << "'\n";
+        return kFilesystemError;
+    }
+    if (actual != lowercase(expected)) {
+        std::cerr << "lunax: SHA-256 mismatch for '" << path.string()
+                  << "'\nexpected: " << lowercase(expected)
+                  << "\nactual:   " << actual << '\n';
+        return kDownloadError;
+    }
+    return 0;
+}
 
 const char* environment(const char* name) {
     const char* value = std::getenv(name);
@@ -323,7 +521,26 @@ const SelectedBackend& selectedBackend() {
     return backend;
 }
 
-int downloadTo(const std::string& url, const fs::path& output) {
+int downloadTo(const std::string& url, const fs::path& output,
+               const std::string& expectedSha256) {
+    if (!validSha256(expectedSha256)) {
+        std::cerr << "lunax: expected SHA-256 must contain exactly 64 hex digits\n";
+        return kUsageError;
+    }
+    std::error_code filesystemError;
+    if (fs::exists(output, filesystemError)) {
+        std::cerr << "lunax: download destination already exists: '"
+                  << output.string() << "'\n";
+        return kDownloadError;
+    }
+    if (!output.parent_path().empty()) {
+        fs::create_directories(output.parent_path(), filesystemError);
+        if (filesystemError) {
+            reportFilesystem("cannot create download directory",
+                             output.parent_path(), filesystemError);
+            return kFilesystemError;
+        }
+    }
     const SelectedBackend& backend = selectedBackend();
     if (!backend.descriptor) {
         std::cerr << "lunax: cannot load download backend: "
@@ -354,7 +571,7 @@ int downloadTo(const std::string& url, const fs::path& output) {
                       << output.string() << "'\n";
         return kDownloadError;
     }
-    return 0;
+    return verifySha256(output, expectedSha256);
 }
 
 int setEnvironment(const std::string& name, const std::string& value) {
@@ -455,31 +672,71 @@ int spawn(const std::vector<std::string>& arguments) {
 }
 
 int fetchAndExtract(const std::string& label, const std::string& url,
-                    const fs::path& archive, const fs::path& target) {
+                    const std::string& expectedSha256,
+                    const fs::path& archive, const fs::path& target,
+                    const fs::path& requiredRelativeFile = {}) {
     std::error_code error;
+    if (!validSha256(expectedSha256)) {
+        std::cerr << "lunax: expected SHA-256 must contain exactly 64 hex digits\n";
+        return kUsageError;
+    }
     if (fs::exists(target, error)) {
         std::cerr << "lunax: installation already exists: '" << target.string()
                   << "'\n";
         return kFilesystemError;
     }
     if (!fs::exists(archive, error)) {
-        const int downloaded = downloadTo(url, archive);
+        const int downloaded = downloadTo(url, archive, expectedSha256);
         if (downloaded != 0) return downloaded;
     } else {
         std::cout << "lunax: using cached archive '" << archive.string()
                   << "'\n";
+        const int verified = verifySha256(archive, expectedSha256);
+        if (verified != 0) return verified;
     }
-    fs::create_directories(target, error);
+
+    static uint64_t stagingCounter = 0;
+    const auto ticks = std::chrono::steady_clock::now()
+        .time_since_epoch().count();
+    const fs::path staging = target.parent_path() /
+        ("." + target.filename().string() + ".staging-" +
+         std::to_string(ticks) + "-" + std::to_string(++stagingCounter));
+    fs::create_directories(staging, error);
     if (error) {
-        reportFilesystem("cannot create installation", target, error);
+        reportFilesystem("cannot create installation staging directory",
+                         staging, error);
         return kFilesystemError;
     }
     const int extracted = spawn({
-        "tar", "-xf", archive.string(), "-C", target.string(),
+        "tar", "-xf", archive.string(), "-C", staging.string(),
         "--strip-components=1"});
     if (extracted != 0) {
         std::cerr << "lunax: archive extraction failed; incomplete files were retained at '"
-                  << target.string() << "'\n";
+                  << staging.string() << "'\n";
+        return kFilesystemError;
+    }
+    const bool stagingEmpty = fs::is_empty(staging, error);
+    if (error || stagingEmpty) {
+        std::cerr << "lunax: archive produced no installable content; staged files were retained at '"
+                  << staging.string() << "'\n";
+        return kFilesystemError;
+    }
+    const fs::file_status requiredStatus = requiredRelativeFile.empty()
+        ? fs::file_status(fs::file_type::regular)
+        : fs::symlink_status(staging / requiredRelativeFile, error);
+    if (!requiredRelativeFile.empty() &&
+        (error || !fs::is_regular_file(requiredStatus))) {
+        std::cerr << "lunax: archive is missing a regular required file '"
+                  << requiredRelativeFile.string()
+                  << "'; staged files were retained at '" << staging.string()
+                  << "'\n";
+        return kFilesystemError;
+    }
+    fs::rename(staging, target, error);
+    if (error) {
+        reportFilesystem("cannot publish staged installation", target, error);
+        std::cerr << "lunax: staged files were retained at '"
+                  << staging.string() << "'\n";
         return kFilesystemError;
     }
     std::cout << "installed " << label << " at " << target.string() << '\n';
@@ -564,16 +821,22 @@ void lunax_host_err_line(const char* text) {
     std::cerr << (text ? text : "") << '\n';
 }
 
-int32_t lunax_host_download(const char* url, const char* outputPath) {
-    if (!url || !*url || !outputPath || !*outputPath) return kUsageError;
-    return downloadTo(url, fs::u8path(outputPath));
+int32_t lunax_host_download(const char* url, const char* outputPath,
+                            const char* expectedSha256) {
+    if (!url || !*url || !outputPath || !*outputPath ||
+        !expectedSha256 || !*expectedSha256)
+        return kUsageError;
+    return downloadTo(url, fs::u8path(outputPath), expectedSha256);
 }
 
 int32_t lunax_host_install(const char* kindValue, const char* versionValue,
-                           const char* urlValue) {
+                           const char* urlValue,
+                           const char* expectedSha256Value) {
     const std::string kind = kindValue ? kindValue : "";
     const std::string version = versionValue ? versionValue : "";
     const std::string url = urlValue ? urlValue : "";
+    const std::string expectedSha256 =
+        expectedSha256Value ? expectedSha256Value : "";
     if (!validKind(kind)) {
         std::cerr << "lunax: install kind must be compiler, toolchain, or sdk\n";
         return kUsageError;
@@ -582,13 +845,22 @@ int32_t lunax_host_install(const char* kindValue, const char* versionValue,
         std::cerr << "lunax: version may contain only letters, digits, '.', '_', and '-'\n";
         return kUsageError;
     }
-    if (url.empty()) return kUsageError;
+    if (url.empty() || !validSha256(expectedSha256)) {
+        std::cerr << "lunax: install requires a 64-digit expected SHA-256\n";
+        return kUsageError;
+    }
 
     const fs::path target = installRoot(kind, version);
     const fs::path archive = lunaxHome() / "downloads" /
-        (kind + "-" + version + ".archive");
+        (kind + "-" + version + "-" + lowercase(expectedSha256) + ".archive");
+#ifdef _WIN32
+    const fs::path requiredCompiler = fs::path("bin") / "luna.exe";
+#else
+    const fs::path requiredCompiler = fs::path("bin") / "luna";
+#endif
     const int installed = fetchAndExtract(
-        kind + " " + version, url, archive, target);
+        kind + " " + version, url, expectedSha256, archive, target,
+        kind == "compiler" ? requiredCompiler : fs::path{});
     if (installed != 0) return installed;
     std::error_code error;
     if (kind == "compiler" &&
@@ -645,20 +917,29 @@ int32_t lunax_host_use(const char* kindValue, const char* versionValue) {
 
 int32_t lunax_host_package_fetch(const char* packageIdValue,
                                  const char* versionValue,
-                                 const char* urlValue) {
+                                 const char* urlValue,
+                                 const char* expectedSha256Value) {
     const std::string packageId = packageIdValue ? packageIdValue : "";
     const std::string version = versionValue ? versionValue : "";
     const std::string url = urlValue ? urlValue : "";
+    const std::string expectedSha256 =
+        expectedSha256Value ? expectedSha256Value : "";
     if (!validPackageId(packageId)) {
         std::cerr << "lunax: package ID may contain only letters, digits, '.', '_', and '-'\n";
         return kUsageError;
     }
-    if (!validVersion(version) || url.empty()) return kUsageError;
+    if (!validVersion(version) || url.empty() ||
+        !validSha256(expectedSha256)) {
+        std::cerr << "lunax: package fetch requires a 64-digit expected SHA-256\n";
+        return kUsageError;
+    }
     const fs::path target = lunaxHome() / "packages" / packageId / version;
     const fs::path archive = lunaxHome() / "downloads" /
-        ("package-" + packageId + "-" + version + ".archive");
+        ("package-" + packageId + "-" + version + "-" +
+         lowercase(expectedSha256) + ".archive");
     return fetchAndExtract(
-        "package " + packageId + " " + version, url, archive, target);
+        "package " + packageId + " " + version, url, expectedSha256,
+        archive, target);
 }
 
 int32_t lunax_host_package_list(const char* packageIdValue) {

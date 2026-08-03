@@ -1,0 +1,70 @@
+name: Lunax CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      luna_ref:
+        description: Luna branch, tag, or commit used to build Lunax
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lunax-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  luna-integration:
+    name: Luna integration and transactional install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out Lunax
+        uses: actions/checkout@v6
+
+      - name: Check out the selected Luna source
+        uses: actions/checkout@v6
+        with:
+          repository: Luna-PL/Luna
+          ref: ${{ inputs.luna_ref || 'main' }}
+          path: .ci/luna
+          persist-credentials: false
+
+      - name: Install build dependencies and LLVM 22
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates cmake curl libcurl4-openssl-dev lsb-release ninja-build tar wget
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+
+      - name: Build the selected Luna compiler
+        run: |
+          cmake -S .ci/luna -B .ci/luna-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DLUNA_STRICT_WARNINGS=ON \
+            -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
+          cmake --build .ci/luna-build --parallel
+
+      - name: Verify compiler build identity
+        run: ctest --test-dir .ci/luna-build -R '^luna.compiler-identity$' --output-on-failure
+
+      - name: Configure and build Lunax
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DLUNA_COMPILER=${{ github.workspace }}/.ci/luna-build/luna \
+            -DLUNA_RUNTIME_LIB=${{ github.workspace }}/.ci/luna-build/libruntime.a
+          cmake --build build --parallel
+
+      - name: Run Lunax command and installation tests
+        run: ctest --test-dir build --output-on-failure

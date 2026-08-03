@@ -1,19 +1,33 @@
 #include "lunax/backend_abi.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 
 namespace {
 
-int unavailable(void*, const LunaxDownloadRequestV1*, char* error,
+int copyFixture(void*, const LunaxDownloadRequestV1* request, char* error,
                 size_t errorCapacity) {
-    constexpr char message[] = "test backend does not download";
-    if (error && errorCapacity != 0) {
-        const size_t copied = std::min(errorCapacity - 1, sizeof(message) - 1);
+    const char* fixture = std::getenv("LUNAX_TEST_ARCHIVE");
+    const char* message = nullptr;
+    if (!request || !request->output_path_utf8 || !fixture || !*fixture) {
+        message = "LUNAX_TEST_ARCHIVE is not configured";
+    } else {
+        std::ifstream input(fixture, std::ios::binary);
+        std::ofstream output(request->output_path_utf8,
+                             std::ios::binary | std::ios::trunc);
+        if (input && output) output << input.rdbuf();
+        if (input && output) return LUNAX_DOWNLOAD_OK;
+        message = "test backend could not copy the fixture archive";
+    }
+    if (error && errorCapacity != 0 && message) {
+        const size_t length = std::strlen(message);
+        const size_t copied = std::min(errorCapacity - 1, length);
         std::memcpy(error, message, copied);
         error[copied] = '\0';
     }
-    return LUNAX_DOWNLOAD_TRANSPORT_ERROR;
+    return LUNAX_DOWNLOAD_FILESYSTEM_ERROR;
 }
 
 const LunaxDownloadBackendV1 kBackend{
@@ -23,7 +37,7 @@ const LunaxDownloadBackendV1 kBackend{
     0,
     "fake-dynamic",
     nullptr,
-    unavailable,
+    copyFixture,
 };
 
 } // namespace

@@ -33,7 +33,9 @@ a separate shared library implementing this ABI; Lunax core must not link to wge
 Backend v1 downloads one URL to one new file. It follows redirects, requires TLS certificate
 and hostname verification, rejects overwrite, and returns a caller-owned diagnostic. A failed
 download is retained for inspection because the current project policy performs no implicit
-deletion.
+deletion. Lunax core creates the destination directory and verifies the caller-provided SHA-256
+after every backend download, so integrity policy does not vary between builtin and plugin
+backends.
 
 ## Managed installations
 
@@ -51,10 +53,14 @@ $LUNAX_HOME/
 ```
 
 Versions are restricted to letters, digits, `.`, `_`, and `-`; this prevents path traversal.
-Install and package fetch refuse an existing target and never overwrite a download. The MVP expects a tar-
-compatible archive with one top-level directory and invokes `tar --strip-components=1`.
-Extraction failures are retained and reported; removal, repair, checksums, signatures, remote
-indexes, dependency solving, and transactional rollback are future work.
+Install and package fetch refuse an existing target and never overwrite a download. Cached
+archive names include the expected digest, and the digest is rechecked before every extraction.
+The MVP expects a tar-compatible archive with one top-level directory and invokes
+`tar --strip-components=1` in a unique sibling staging directory. A compiler layout must contain
+`bin/luna` (`bin/luna.exe` on Windows) before the staging directory is atomically renamed to its
+final version path. Extraction or validation failures are retained and reported without making
+the version visible. Removal, repair, signatures, remote indexes, and dependency solving remain
+future work.
 
 ## Environment and compiler selection
 

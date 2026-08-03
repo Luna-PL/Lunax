@@ -113,4 +113,17 @@ if(BUILD_TESTING)
             "${LUNAX_EXECUTABLE}" backend)
     set_tests_properties(lunax.dynamic-backend PROPERTIES
         PASS_REGULAR_EXPRESSION "download backend: fake-dynamic")
+    add_test(
+        NAME lunax.install-integration
+        COMMAND "${CMAKE_COMMAND}"
+            -DLUNAX_EXECUTABLE=${LUNAX_EXECUTABLE}
+            -DLUNAX_TEST_BACKEND=$<TARGET_FILE:lunax-test-backend>
+            -DLUNAX_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -DLUNAX_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            -DLUNA_EXECUTABLE=${LUNA_COMPILER}
+            -DLUNA_RUNTIME_LIB=${LUNA_RUNTIME_LIB}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/install_integration.cmake)
+    set_tests_properties(lunax.install-integration PROPERTIES
+        LABELS "integration;release"
+        TIMEOUT 60)
 endif()

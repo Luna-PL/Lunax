@@ -6,6 +6,8 @@
 - compiler/toolchain/SDK version directories and active selection;
 - remote package archive cache;
 - libcurl downloads and backend ABI v1;
+- mandatory SHA-256 verification and content-addressed archive caching;
+- sibling staging with atomic publication after layout validation;
 - explicit native compatibility boundary.
 
 ## Luna 0.3 migration
@@ -14,7 +16,7 @@
 - replace borrowed `cstr` command data with owned Luna String/Vec;
 - expose structured `Result` errors instead of integer host statuses;
 - connect the package cache to compiler dependency resolution and lock generation;
-- add checksum/signature verification and transactional install state;
+- add signature verification and retained-staging repair state;
 - remove the compatibility host surface operation by operation.
 
 ## After 0.3

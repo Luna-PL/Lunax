@@ -31,11 +31,11 @@ lunax version
 lunax env
 lunax backend
 lunax which
-lunax download <url> <output>
-lunax install <compiler|toolchain|sdk> <version> <url>
+lunax download <url> <output> <sha256>
+lunax install <compiler|toolchain|sdk> <version> <url> <sha256>
 lunax list [compiler|toolchain|sdk]
 lunax use <compiler|toolchain|sdk> <version>
-lunax package fetch <package-id> <version> <url>
+lunax package fetch <package-id> <version> <url> <sha256>
 lunax package list [package-id]
 lunax luna <Luna 参数...>
 lunax <任意 Luna CLI 命令...>
@@ -51,9 +51,10 @@ Lunax 使用 `LUNAX_HOME`、`LUNAX_LUNA`、`LUNAX_DOWNLOAD_BACKEND` 和
 `LUNA_RUNTIME_LIB`、`LUNA_TOOLCHAIN`、`LUNA_SDK` 和 `LUNA_PACKAGE_HOME`。
 `lunax env` 可输出供交互 shell 使用的赋值语句。
 
-初始 installer 接受只有一个顶层目录的 tar-compatible archive。`package fetch` 会把
+初始 installer 接受只有一个顶层目录的 tar-compatible archive。下载结果和缓存 archive
+都必须匹配调用方提供的 SHA-256。解包发生在同级 staging 目录中，仅在布局校验通过后
+原子发布；失败 staging 会保留供审计，但不会显示为已安装版本。`package fetch` 会把
 reverse-DNS package archive 放入按版本组织的本地 cache；当前 Luna 编译器还不会把它
-解析为 registry。Lunax 目前尚未实现 checksum/signature 校验、包依赖求解、partial install
-修复或删除操作，因此它首先是一个真正可运行的
-集成实战项目，还不是面向安全敏感生产环境的包管理器。参见
+解析为 registry。Lunax 目前尚未实现 signature 校验、包依赖求解、失败 staging 修复或
+删除操作；它已经具备完整性与发布安全门禁，但还不是完整的生产级包管理器。参见
 [架构说明](docs/architecture.md)与[后端 ABI](docs/backend-plugin.md)。
