@@ -80,6 +80,14 @@ install(PROGRAMS "${LUNAX_EXECUTABLE}"
         DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME lunax)
 install(FILES include/lunax/backend_abi.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/lunax")
+install(FILES compatibility/luna.json
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/lunax/compatibility")
+install(FILES README.md README.zh-CN.md CHANGELOG.md
+        LICENSE LICENSE-MIT LICENSE-APACHE
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/lunax")
+install(DIRECTORY docs/
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/lunax/docs"
+        FILES_MATCHING PATTERN "*.md")
 
 include(CTest)
 if(BUILD_TESTING)

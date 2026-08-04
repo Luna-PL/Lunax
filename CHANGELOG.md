@@ -16,3 +16,5 @@
 - Added sibling staging and atomic publication, including compiler-layout
   validation and full install/list/use/forward/package integration coverage.
 - Added Linux CI against an explicitly selected Luna compiler revision.
+- Declared the Luna v0.2.1 compatibility baseline and backend ABI in a packaged manifest.
+- Added MIT OR Apache-2.0 licensing and an Ubuntu 24.04 x86_64 prerelease boundary.

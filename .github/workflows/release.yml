@@ -1,0 +1,170 @@
+name: Lunax prerelease
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v-prefixed tag to package and publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  release-metadata:
+    name: Verify release metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      luna_ref: ${{ steps.compatibility.outputs.luna_ref }}
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Verify synchronized versions
+        run: cmake -DRELEASE_TAG="$RELEASE_TAG" -P scripts/release/verify_metadata.cmake
+
+      - name: Read Luna compatibility baseline
+        id: compatibility
+        shell: bash
+        run: |
+          luna_ref="$(node -p "require('./compatibility/luna.json').luna.release_tag")"
+          test -n "$luna_ref"
+          echo "luna_ref=$luna_ref" >> "$GITHUB_OUTPUT"
+
+  conformance:
+    name: Exact Luna release conformance
+    needs: release-metadata
+    uses: ./.github/workflows/ci.yml
+    with:
+      luna_ref: ${{ needs.release-metadata.outputs.luna_ref }}
+
+  package:
+    name: Ubuntu 24.04 x86_64 package
+    needs:
+      - release-metadata
+      - conformance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out Lunax release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Check out compatible Luna source
+        uses: actions/checkout@v6
+        with:
+          repository: Luna-PL/Luna
+          ref: ${{ needs.release-metadata.outputs.luna_ref }}
+          path: .ci/luna
+          persist-credentials: false
+
+      - name: Install build dependencies and LLVM 22
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates cmake curl libcurl4-openssl-dev lsb-release ninja-build tar wget
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+
+      - name: Build compatible Luna compiler
+        run: |
+          cmake -S .ci/luna -B .ci/luna-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DLUNA_STRICT_WARNINGS=ON \
+            -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm
+          cmake --build .ci/luna-build --parallel
+
+      - name: Build and test Lunax
+        run: |
+          cmake -S . -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-22 \
+            -DCMAKE_CXX_COMPILER=clang++-22 \
+            -DLUNA_COMPILER=${{ github.workspace }}/.ci/luna-build/luna \
+            -DLUNA_RUNTIME_LIB=${{ github.workspace }}/.ci/luna-build/libruntime.a
+          cmake --build build-release --parallel
+          ctest --test-dir build-release --output-on-failure
+
+      - name: Stage release archive
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          package="lunax-${version}-ubuntu-24.04-x86_64"
+          cmake --install build-release --prefix "$PWD/stage/$package"
+          ldd "stage/$package/bin/lunax" > linux-runtime-dependencies.txt
+          if grep -q 'not found' linux-runtime-dependencies.txt; then
+            cat linux-runtime-dependencies.txt
+            exit 1
+          fi
+          grep -q 'libcurl.so.4' linux-runtime-dependencies.txt
+          {
+            echo "Lunax ${version} MVP prerelease"
+            echo "Target: Ubuntu 24.04 x86_64"
+            echo "System dependencies: glibc, libcurl.so.4, tar"
+            echo "Compatible Luna: ${{ needs.release-metadata.outputs.luna_ref }}"
+            echo "Source commit: $GITHUB_SHA"
+          } > "stage/$package/RELEASE-MANIFEST.txt"
+          mkdir -p dist
+          (cd stage && cmake -E tar czf "../dist/${package}.tar.gz" \
+            --format=gnutar "$package")
+          (cd dist && sha256sum "${package}.tar.gz" > \
+            "${package}.tar.gz.sha256")
+
+      - name: Verify staged package
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          package="lunax-${version}-ubuntu-24.04-x86_64"
+          (cd dist && sha256sum -c "${package}.tar.gz.sha256")
+          mkdir -p package-verify
+          (cd package-verify && cmake -E tar xzf "../dist/${package}.tar.gz")
+          test "$(package-verify/$package/bin/lunax version)" = "lunax ${version}"
+          package-verify/$package/bin/lunax help
+          test -f "package-verify/$package/share/lunax/compatibility/luna.json"
+          test -f "package-verify/$package/share/doc/lunax/LICENSE-MIT"
+          test -f "package-verify/$package/share/doc/lunax/LICENSE-APACHE"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: lunax-release-ubuntu-24.04-x86_64
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub prerelease
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: lunax-release-ubuntu-24.04-x86_64
+          path: dist
+
+      - name: Publish immutable prerelease with gh
+        run: |
+          gh release create "$RELEASE_TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Lunax $RELEASE_TAG" \
+            --generate-notes \
+            --prerelease \
+            --verify-tag

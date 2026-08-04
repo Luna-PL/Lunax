@@ -9,6 +9,10 @@ narrow native host library temporarily supplies argv, process, path, dynamic-lib
 libcurl operations that Luna Std cannot yet express. The compatibility layer is designed to
 be removed as Luna 0.3 and the standard library mature.
 
+Lunax is dual-licensed under MIT or Apache-2.0. Published compatibility is declared in
+`compatibility/luna.json`. The initial prebuilt release target is Ubuntu 24.04 x86_64 and
+requires the system glibc, `libcurl.so.4`, and `tar`; other platforms remain source-build only.
+
 ## Build
 
 Requirements: CMake 3.20+, a C++17 compiler, libcurl development files, `tar`, and a current

@@ -8,6 +8,10 @@ Luna 的环境变量，通过可替换后端下载产物，并把自身未占用
 安全表达 argv 索引、进程启动、owned path、动态库和 libcurl variadic 调用，仓库暂时包含
 一个很窄的 native host library。随着 Luna 0.3 和标准库成熟，该兼容层应逐步删除。
 
+Lunax 采用 MIT 或 Apache-2.0 双许可证。发布兼容性由 `compatibility/luna.json` 声明。
+首个预编译发布目标限定为 Ubuntu 24.04 x86_64，并依赖系统 glibc、`libcurl.so.4` 与
+`tar`；其他平台目前仍仅支持从源码构建。
+
 ## 构建
 
 需要 CMake 3.20+、C++17 编译器、libcurl 开发文件、`tar`，以及当前 Luna 编译器和

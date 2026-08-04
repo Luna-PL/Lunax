@@ -1,0 +1,35 @@
+if(NOT DEFINED LUNAX_SOURCE_DIR)
+    get_filename_component(LUNAX_SOURCE_DIR
+        "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+endif()
+if(NOT DEFINED RELEASE_TAG OR NOT RELEASE_TAG MATCHES "^v[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "RELEASE_TAG must have the form vX.Y.Z")
+endif()
+
+file(READ "${LUNAX_SOURCE_DIR}/VERSION" version)
+string(STRIP "${version}" version)
+file(READ "${LUNAX_SOURCE_DIR}/compatibility/luna.json" compatibility)
+string(JSON compatibility_version GET "${compatibility}" lunax_version)
+string(JSON luna_release_tag GET "${compatibility}" luna release_tag)
+file(READ "${LUNAX_SOURCE_DIR}/luna.package" package_manifest)
+file(READ "${LUNAX_SOURCE_DIR}/CMakeLists.txt" cmake_project)
+
+if(NOT RELEASE_TAG STREQUAL "v${version}")
+    message(FATAL_ERROR "release tag ${RELEASE_TAG} does not match VERSION ${version}")
+endif()
+if(NOT compatibility_version STREQUAL version)
+    message(FATAL_ERROR
+        "compatibility version ${compatibility_version} does not match ${version}")
+endif()
+if(NOT package_manifest MATCHES "version = \"${version}\"")
+    message(FATAL_ERROR "luna.package version does not match ${version}")
+endif()
+if(NOT cmake_project MATCHES "project\\(Lunax VERSION ${version} ")
+    message(FATAL_ERROR "CMake project version does not match ${version}")
+endif()
+if(NOT luna_release_tag MATCHES "^v[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "compatibility Luna release tag is invalid")
+endif()
+
+message(STATUS
+    "Lunax ${version} metadata verified against Luna ${luna_release_tag}")
