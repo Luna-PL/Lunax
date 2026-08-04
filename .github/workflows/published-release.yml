@@ -1,0 +1,103 @@
+name: Published prerelease verification
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Lunax release tag to verify
+        required: true
+        default: v0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: published-lunax-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  ubuntu-consumer:
+    name: Ubuntu 24.04 x86_64 consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out verification source
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Resolve release asset names
+        id: assets
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          archive="lunax-${version}-ubuntu-24.04-x86_64.tar.gz"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "package=${archive%.tar.gz}" >> "$GITHUB_OUTPUT"
+          echo "checksum=${archive}.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Download the public GitHub Release
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.assets.outputs.archive }}
+          CHECKSUM_NAME: ${{ steps.assets.outputs.checksum }}
+        run: |
+          mkdir -p published
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir published \
+            --pattern "$ARCHIVE_NAME" \
+            --pattern "$CHECKSUM_NAME"
+
+      - name: Verify release asset set and SHA-256
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.assets.outputs.archive }}
+          CHECKSUM_NAME: ${{ steps.assets.outputs.checksum }}
+        run: |
+          gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json assets > release-assets.json
+          jq -e \
+            --arg archive "$ARCHIVE_NAME" \
+            --arg checksum "$CHECKSUM_NAME" \
+            '.assets | length == 2 and
+              ([.[].name] | sort) == ([$archive, $checksum] | sort) and
+              all(.[].digest; startswith("sha256:"))' \
+            release-assets.json
+          checksum_digest="$(jq -r \
+            --arg name "$CHECKSUM_NAME" \
+            '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")' \
+            release-assets.json)"
+          echo "$checksum_digest  published/$CHECKSUM_NAME" | sha256sum -c -
+          test "$(wc -l < "published/$CHECKSUM_NAME")" -eq 1
+          (cd published && sha256sum -c "$CHECKSUM_NAME")
+
+      - name: Extract and run the published package
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.assets.outputs.archive }}
+          PACKAGE_NAME: ${{ steps.assets.outputs.package }}
+        run: |
+          mkdir -p extracted
+          (cd extracted && cmake -E tar xzf "../published/$ARCHIVE_NAME")
+          test "$(extracted/$PACKAGE_NAME/bin/lunax version)" = \
+            "lunax ${RELEASE_TAG#v}"
+          extracted/$PACKAGE_NAME/bin/lunax help
+          extracted/$PACKAGE_NAME/bin/lunax backend
+          jq -e \
+            --arg version "${RELEASE_TAG#v}" \
+            '.lunax_version == $version and
+              .release_tier == "mvp-prerelease" and
+              any(.published_platforms[];
+                .target == "ubuntu-24.04-x86_64")' \
+            "extracted/$PACKAGE_NAME/share/lunax/compatibility/luna.json"

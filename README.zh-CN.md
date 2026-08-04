@@ -11,6 +11,9 @@ Luna 的环境变量，通过可替换后端下载产物，并把自身未占用
 Lunax 采用 MIT 或 Apache-2.0 双许可证。发布兼容性由 `compatibility/luna.json` 声明。
 首个预编译发布目标限定为 Ubuntu 24.04 x86_64，并依赖系统 glibc、`libcurl.so.4` 与
 `tar`；其他平台目前仍仅支持从源码构建。
+发布后，`published-release.yml` 会在干净的 Ubuntu 24.04 runner 上下载公开 archive 与
+checksum，验证精确资产集合和 GitHub 记录的 digest，解包后运行 CLI 并检查随包分发的
+兼容性声明。
 
 ## 构建
 

@@ -12,6 +12,9 @@ be removed as Luna 0.3 and the standard library mature.
 Lunax is dual-licensed under MIT or Apache-2.0. Published compatibility is declared in
 `compatibility/luna.json`. The initial prebuilt release target is Ubuntu 24.04 x86_64 and
 requires the system glibc, `libcurl.so.4`, and `tar`; other platforms remain source-build only.
+After publication, `published-release.yml` downloads the public archive and checksum on a clean
+Ubuntu 24.04 runner, verifies the exact asset set and GitHub-recorded digests, extracts the
+package, and runs its CLI and packaged compatibility checks.
 
 ## Build
 
