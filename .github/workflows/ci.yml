@@ -80,3 +80,19 @@ jobs:
 
       - name: Run Lunax command and installation tests
         run: ctest --test-dir build --output-on-failure
+
+      - name: Build and inspect Ubuntu package
+        shell: bash
+        run: |
+          cpack --config build/CPackConfig.cmake -G DEB -B build/packages
+          mapfile -t packages < <(find build/packages -maxdepth 1 \
+            -type f -name '*.deb' -print)
+          test "${#packages[@]}" -eq 1
+          dpkg-deb --info "${packages[0]}"
+          dependencies="$(dpkg-deb --field "${packages[0]}" Depends)"
+          grep -Eq '(^|, )libcurl4t64([ ,]|$)' <<< "$dependencies"
+          grep -Eq '(^|, )tar([ ,]|$)' <<< "$dependencies"
+          mkdir -p build/deb-root
+          dpkg-deb --extract "${packages[0]}" build/deb-root
+          test "$(build/deb-root/usr/bin/lunax version)" = \
+            "lunax $(cat VERSION)"

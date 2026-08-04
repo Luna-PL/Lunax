@@ -138,6 +138,23 @@ jobs:
           test -f "package-verify/$package/share/doc/lunax/LICENSE-MIT"
           test -f "package-verify/$package/share/doc/lunax/LICENSE-APACHE"
 
+      - name: Build and verify Debian package
+        shell: bash
+        run: |
+          cpack --config build-release/CPackConfig.cmake -G DEB -B dist
+          mapfile -t packages < <(find dist -maxdepth 1 \
+            -type f -name '*.deb' -print)
+          test "${#packages[@]}" -eq 1
+          dependencies="$(dpkg-deb --field "${packages[0]}" Depends)"
+          grep -Eq '(^|, )libcurl4t64([ ,]|$)' <<< "$dependencies"
+          grep -Eq '(^|, )tar([ ,]|$)' <<< "$dependencies"
+          mkdir -p deb-verify
+          dpkg-deb --extract "${packages[0]}" deb-verify
+          test "$(deb-verify/usr/bin/lunax version)" = \
+            "lunax ${RELEASE_TAG#v}"
+          package_name="$(basename "${packages[0]}")"
+          (cd dist && sha256sum "$package_name" > "$package_name.sha256")
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:

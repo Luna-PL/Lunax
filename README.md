@@ -68,4 +68,5 @@ current Luna compiler does not yet resolve that cache as a registry. Lunax does 
 verify signatures, solve package dependencies, repair retained staging directories, or
 remove files. It is a practical integration tool with integrity and publication safety,
 not yet a complete production package manager. See [architecture](docs/architecture.md) and the
-[backend ABI](docs/backend-plugin.md).
+[backend ABI](docs/backend-plugin.md). Distribution dependency decisions are recorded in the
+[distribution policy](docs/distribution.md).

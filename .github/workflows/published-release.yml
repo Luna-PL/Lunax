@@ -44,6 +44,16 @@ jobs:
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "package=${archive%.tar.gz}" >> "$GITHUB_OUTPUT"
           echo "checksum=${archive}.sha256" >> "$GITHUB_OUTPUT"
+          if test "$RELEASE_TAG" = v0.1.0; then
+            echo "has-deb=false" >> "$GITHUB_OUTPUT"
+            echo "expected-count=2" >> "$GITHUB_OUTPUT"
+          else
+            deb="lunax_${version}_amd64.deb"
+            echo "has-deb=true" >> "$GITHUB_OUTPUT"
+            echo "expected-count=4" >> "$GITHUB_OUTPUT"
+            echo "deb=$deb" >> "$GITHUB_OUTPUT"
+            echo "deb-checksum=${deb}.sha256" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Download the public GitHub Release
         shell: bash
@@ -58,11 +68,28 @@ jobs:
             --pattern "$ARCHIVE_NAME" \
             --pattern "$CHECKSUM_NAME"
 
+      - name: Download Debian assets
+        if: steps.assets.outputs.has-deb == 'true'
+        shell: bash
+        env:
+          DEB_NAME: ${{ steps.assets.outputs.deb }}
+          DEB_CHECKSUM_NAME: ${{ steps.assets.outputs.deb-checksum }}
+        run: |
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir published \
+            --pattern "$DEB_NAME" \
+            --pattern "$DEB_CHECKSUM_NAME"
+
       - name: Verify release asset set and SHA-256
         shell: bash
         env:
           ARCHIVE_NAME: ${{ steps.assets.outputs.archive }}
           CHECKSUM_NAME: ${{ steps.assets.outputs.checksum }}
+          DEB_NAME: ${{ steps.assets.outputs.deb }}
+          DEB_CHECKSUM_NAME: ${{ steps.assets.outputs.deb-checksum }}
+          HAS_DEB: ${{ steps.assets.outputs.has-deb }}
+          EXPECTED_COUNT: ${{ steps.assets.outputs.expected-count }}
         run: |
           gh release view "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
@@ -70,8 +97,15 @@ jobs:
           jq -e \
             --arg archive "$ARCHIVE_NAME" \
             --arg checksum "$CHECKSUM_NAME" \
-            '.assets | length == 2 and
-              ([.[].name] | sort) == ([$archive, $checksum] | sort) and
+            --arg deb "$DEB_NAME" \
+            --arg deb_checksum "$DEB_CHECKSUM_NAME" \
+            --arg has_deb "$HAS_DEB" \
+            --argjson expected_count "$EXPECTED_COUNT" \
+            '.assets | length == $expected_count and
+              ([.[].name] | sort) ==
+                (if $has_deb == "true" then
+                  [$archive, $checksum, $deb, $deb_checksum] | sort
+                else [$archive, $checksum] | sort end) and
               all(.[].digest; startswith("sha256:"))' \
             release-assets.json
           checksum_digest="$(jq -r \
@@ -81,6 +115,16 @@ jobs:
           echo "$checksum_digest  published/$CHECKSUM_NAME" | sha256sum -c -
           test "$(wc -l < "published/$CHECKSUM_NAME")" -eq 1
           (cd published && sha256sum -c "$CHECKSUM_NAME")
+          if test "$HAS_DEB" = true; then
+            deb_checksum_digest="$(jq -r \
+              --arg name "$DEB_CHECKSUM_NAME" \
+              '.assets[] | select(.name == $name) | .digest |
+                sub("^sha256:"; "")' release-assets.json)"
+            echo "$deb_checksum_digest  published/$DEB_CHECKSUM_NAME" |
+              sha256sum -c -
+            test "$(wc -l < "published/$DEB_CHECKSUM_NAME")" -eq 1
+            (cd published && sha256sum -c "$DEB_CHECKSUM_NAME")
+          fi
 
       - name: Extract and run the published package
         shell: bash
@@ -101,3 +145,17 @@ jobs:
               any(.published_platforms[];
                 .target == "ubuntu-24.04-x86_64")' \
             "extracted/$PACKAGE_NAME/share/lunax/compatibility/luna.json"
+
+      - name: Inspect and run the published Debian package
+        if: steps.assets.outputs.has-deb == 'true'
+        shell: bash
+        env:
+          DEB_NAME: ${{ steps.assets.outputs.deb }}
+        run: |
+          dependencies="$(dpkg-deb --field "published/$DEB_NAME" Depends)"
+          grep -Eq '(^|, )libcurl4t64([ ,]|$)' <<< "$dependencies"
+          grep -Eq '(^|, )tar([ ,]|$)' <<< "$dependencies"
+          mkdir -p deb-extracted
+          dpkg-deb --extract "published/$DEB_NAME" deb-extracted
+          test "$(deb-extracted/usr/bin/lunax version)" = \
+            "lunax ${RELEASE_TAG#v}"

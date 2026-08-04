@@ -64,4 +64,5 @@ Lunax 使用 `LUNAX_HOME`、`LUNAX_LUNA`、`LUNAX_DOWNLOAD_BACKEND` 和
 reverse-DNS package archive 放入按版本组织的本地 cache；当前 Luna 编译器还不会把它
 解析为 registry。Lunax 目前尚未实现 signature 校验、包依赖求解、失败 staging 修复或
 删除操作；它已经具备完整性与发布安全门禁，但还不是完整的生产级包管理器。参见
-[架构说明](docs/architecture.md)与[后端 ABI](docs/backend-plugin.md)。
+[架构说明](docs/architecture.md)、[后端 ABI](docs/backend-plugin.md)与
+[分发策略](docs/distribution.zh-CN.md)。
