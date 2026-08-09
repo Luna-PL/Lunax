@@ -179,7 +179,8 @@ jobs:
 
       - name: Publish immutable prerelease with gh
         run: |
-          gh release create "$RELEASE_TAG" dist/* \
+          gh release create "$RELEASE_TAG" \
+            dist/*.tar.gz dist/*.deb dist/*.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --title "Lunax $RELEASE_TAG" \
             --generate-notes \
