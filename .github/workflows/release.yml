@@ -168,6 +168,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -176,6 +179,14 @@ jobs:
         with:
           name: lunax-release-ubuntu-24.04-x86_64
           path: dist
+
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.sha256
 
       - name: Publish immutable prerelease with gh
         run: |

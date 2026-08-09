@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing Lunax release tag to verify
         required: true
-        default: v0.1.0
+        default: v0.1.2
         type: string
 
 permissions:
@@ -125,6 +125,26 @@ jobs:
             test "$(wc -l < "published/$DEB_CHECKSUM_NAME")" -eq 1
             (cd published && sha256sum -c "$DEB_CHECKSUM_NAME")
           fi
+
+      - name: Verify GitHub artifact attestations
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ steps.assets.outputs.archive }}
+          CHECKSUM_NAME: ${{ steps.assets.outputs.checksum }}
+          DEB_NAME: ${{ steps.assets.outputs.deb }}
+          DEB_CHECKSUM_NAME: ${{ steps.assets.outputs.deb-checksum }}
+          HAS_DEB: ${{ steps.assets.outputs.has-deb }}
+        run: |
+          assets=("$ARCHIVE_NAME" "$CHECKSUM_NAME")
+          if test "$HAS_DEB" = true; then
+            assets+=("$DEB_NAME" "$DEB_CHECKSUM_NAME")
+          fi
+          for asset in "${assets[@]}"; do
+            gh attestation verify "published/$asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --deny-self-hosted-runners
+          done
 
       - name: Extract and run the published package
         shell: bash

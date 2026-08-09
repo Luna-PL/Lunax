@@ -13,8 +13,9 @@ Ubuntu 24.04 build 链接发行版提供的 `libcurl.so.4`。Lunax 只使用 HTT
   依赖，并显式依赖 `tar`。
 
 CI 会构建 Debian package、检查 control metadata、要求存在 Ubuntu 24.04 的
-`libcurl4t64` 与 `tar` 依赖、以非特权方式解包，并运行其中的 binary。不可变的 v0.1.0
-release 不会被追溯添加 `.deb`。
+`libcurl4t64` 与 `tar` 依赖、以非特权方式解包，并运行其中的 binary。release workflow
+会为每个 package 与 checksum 生成 GitHub/Sigstore attestation，干净 consumer 验证会
+强制核对这些证明。不可变的 v0.1.0 release 不会被追溯添加 `.deb`。
 
 ## 延后的 portable archive
 

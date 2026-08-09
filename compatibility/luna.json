@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "lunax_version": "0.1.1",
+  "lunax_version": "0.1.2",
   "release_tier": "mvp-prerelease",
   "luna": {
     "language_version": "0.2.1",

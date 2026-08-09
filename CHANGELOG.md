@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.1.1 - Development
+## 0.1.2 - 2026-08-09
+
+- Added GitHub/Sigstore attestations for every release package and checksum asset.
+- Required clean consumer verification to validate the release workflow as the attestation
+  signer before extracting or running a package.
+
+## 0.1.1 - 2026-08-09
 
 - Added post-publication consumer verification for the exact GitHub asset set, checksums,
   extracted CLI, backend, and packaged compatibility declaration.
