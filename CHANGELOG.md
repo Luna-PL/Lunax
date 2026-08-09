@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.1.0 - Development
+## 0.1.1 - Development
+
+- Added post-publication consumer verification for the exact GitHub asset set, checksums,
+  extracted CLI, backend, and packaged compatibility declaration.
+- Added a native Ubuntu Debian package gate with automatically discovered shared-library
+  dependencies and an explicit `tar` dependency.
+- Kept the portable archive dependency strategy explicit instead of bundling an unaudited
+  libcurl runtime closure.
+
+## 0.1.0 - 2026-08-04
 
 - Added the Luna-written CLI dispatcher and transparent forwarding to the selected Luna
   compiler.

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "lunax_version": "0.1.0",
+  "lunax_version": "0.1.1",
   "release_tier": "mvp-prerelease",
   "luna": {
     "language_version": "0.2.1",
@@ -10,7 +10,8 @@
   "published_platforms": [
     {
       "target": "ubuntu-24.04-x86_64",
-      "system_dependencies": ["glibc", "libcurl.so.4", "tar"]
+      "system_dependencies": ["glibc", "libcurl.so.4", "tar"],
+      "package_formats": ["tar.gz", "deb"]
     }
   ]
 }

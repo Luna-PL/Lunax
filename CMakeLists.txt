@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Lunax VERSION 0.1.0
+project(Lunax VERSION 0.1.1
     DESCRIPTION "Luna ecosystem manager"
     HOMEPAGE_URL "https://github.com/Luna-PL/Lunax"
     LANGUAGES CXX)
@@ -123,7 +123,7 @@ if(BUILD_TESTING)
         PASS_REGULAR_EXPRESSION "Luna ecosystem manager")
     add_test(NAME lunax.version COMMAND "${LUNAX_EXECUTABLE}" version)
     set_tests_properties(lunax.version PROPERTIES
-        PASS_REGULAR_EXPRESSION "lunax 0.1.0")
+        PASS_REGULAR_EXPRESSION "lunax 0.1.1")
     add_test(NAME lunax.backend COMMAND "${LUNAX_EXECUTABLE}" backend)
     set_tests_properties(lunax.backend PROPERTIES
         PASS_REGULAR_EXPRESSION "download backend: curl")
