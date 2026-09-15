@@ -367,7 +367,7 @@ int curlDownload(void*, const LunaxDownloadRequestV1* request,
     curl_easy_setopt(transfer, CURLOPT_WRITEFUNCTION, curlWrite);
     curl_easy_setopt(transfer, CURLOPT_WRITEDATA, destination);
     curl_easy_setopt(transfer, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(transfer, CURLOPT_USERAGENT, "lunax/0.1.2");
+    curl_easy_setopt(transfer, CURLOPT_USERAGENT, "lunax/0.2.0");
     curl_easy_setopt(transfer, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(
         transfer, CURLOPT_FOLLOWLOCATION,

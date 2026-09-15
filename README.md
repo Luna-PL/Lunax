@@ -4,10 +4,10 @@ Lunax is the Luna ecosystem manager. It installs and selects Luna compilers, too
 SDKs; maintains the environment passed to Luna; downloads artifacts through a replaceable
 backend; and forwards every command it does not own to the selected Luna compiler.
 
-This is an intentionally honest Luna 0.2 MVP. The command dispatcher is written in Luna. A
+This is a Luna 0.3 migration release. The command dispatcher is written in Luna. A
 narrow native host library temporarily supplies argv, process, path, dynamic-library, and
 libcurl operations that Luna Std cannot yet express. The compatibility layer is designed to
-be removed as Luna 0.3 and the standard library mature.
+shrink as the standard library matures.
 
 Lunax is dual-licensed under MIT or Apache-2.0. Published compatibility is declared in
 `compatibility/luna.json`. The initial prebuilt release target is Ubuntu 24.04 x86_64 and
@@ -29,7 +29,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-The executable is `build/luna-src/org.luna.lunax`.
+The executable is `build/luna-src/build/native/lunax`.
 
 ## Commands
 

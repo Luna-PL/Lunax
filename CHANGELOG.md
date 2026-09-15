@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 - 2026-09-15
+
+- Migrated the package manifest and build output contract to Luna 0.3 applications.
+- Declared Luna 0.3.0 compatibility and pinned release conformance to the exact
+  validated Luna core-freeze candidate commit.
+- Added checksummed and attested `LUNA-SOURCE-COMMIT` release evidence and
+  clean-consumer verification against the packaged compatibility declaration.
+- Retained the native host and download backend ABI v1 as an explicit migration
+  boundary while Slot, Fragment, and missing Std facilities remain open.
+
 ## 0.1.2 - 2026-08-09
 
 - Added GitHub/Sigstore attestations for every release package and checksum asset.

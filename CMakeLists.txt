@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Lunax VERSION 0.1.2
+project(Lunax VERSION 0.2.0
     DESCRIPTION "Luna ecosystem manager"
     HOMEPAGE_URL "https://github.com/Luna-PL/Lunax"
     LANGUAGES CXX)
@@ -50,7 +50,7 @@ endif()
 
 set(LUNAX_LUNA_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/luna-src")
 set(LUNAX_EXECUTABLE
-    "${LUNAX_LUNA_SOURCE_DIR}/org.luna.lunax${CMAKE_EXECUTABLE_SUFFIX}")
+    "${LUNAX_LUNA_SOURCE_DIR}/build/native/lunax${CMAKE_EXECUTABLE_SUFFIX}")
 set(LUNAX_LUNA_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/commands.luna"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/host.luna"
@@ -123,14 +123,14 @@ if(BUILD_TESTING)
         PASS_REGULAR_EXPRESSION "Luna ecosystem manager")
     add_test(NAME lunax.version COMMAND "${LUNAX_EXECUTABLE}" version)
     set_tests_properties(lunax.version PROPERTIES
-        PASS_REGULAR_EXPRESSION "lunax 0.1.2")
+        PASS_REGULAR_EXPRESSION "lunax 0.2.0")
     add_test(NAME lunax.backend COMMAND "${LUNAX_EXECUTABLE}" backend)
     set_tests_properties(lunax.backend PROPERTIES
         PASS_REGULAR_EXPRESSION "download backend: curl")
     add_test(NAME lunax.forward-version COMMAND "${LUNAX_EXECUTABLE}" --version)
     set_tests_properties(lunax.forward-version PROPERTIES
         ENVIRONMENT "LUNAX_LUNA=${LUNA_COMPILER}"
-        PASS_REGULAR_EXPRESSION "Luna 0.2.1")
+        PASS_REGULAR_EXPRESSION "Luna 0.3.0")
     add_test(
         NAME lunax.dynamic-backend
         COMMAND "${CMAKE_COMMAND}" -E env

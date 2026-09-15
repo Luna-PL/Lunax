@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing Lunax release tag to verify
         required: true
-        default: v0.1.2
+        default: v0.2.0
         type: string
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
       - name: Check out verification source
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ env.RELEASE_TAG }}
           persist-credentials: false
 
       - name: Resolve release asset names
@@ -46,13 +46,22 @@ jobs:
           echo "checksum=${archive}.sha256" >> "$GITHUB_OUTPUT"
           if test "$RELEASE_TAG" = v0.1.0; then
             echo "has-deb=false" >> "$GITHUB_OUTPUT"
+            echo "has-source=false" >> "$GITHUB_OUTPUT"
             echo "expected-count=2" >> "$GITHUB_OUTPUT"
           else
             deb="lunax_${version}_amd64.deb"
             echo "has-deb=true" >> "$GITHUB_OUTPUT"
-            echo "expected-count=4" >> "$GITHUB_OUTPUT"
             echo "deb=$deb" >> "$GITHUB_OUTPUT"
             echo "deb-checksum=${deb}.sha256" >> "$GITHUB_OUTPUT"
+            if [[ "$RELEASE_TAG" == v0.1.* ]]; then
+              echo "has-source=false" >> "$GITHUB_OUTPUT"
+              echo "expected-count=4" >> "$GITHUB_OUTPUT"
+            else
+              echo "has-source=true" >> "$GITHUB_OUTPUT"
+              echo "source=LUNA-SOURCE-COMMIT" >> "$GITHUB_OUTPUT"
+              echo "source-checksum=LUNA-SOURCE-COMMIT.sha256" >> "$GITHUB_OUTPUT"
+              echo "expected-count=6" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Download the public GitHub Release
@@ -81,6 +90,19 @@ jobs:
             --pattern "$DEB_NAME" \
             --pattern "$DEB_CHECKSUM_NAME"
 
+      - name: Download Luna source-identity assets
+        if: steps.assets.outputs.has-source == 'true'
+        shell: bash
+        env:
+          SOURCE_NAME: ${{ steps.assets.outputs.source }}
+          SOURCE_CHECKSUM_NAME: ${{ steps.assets.outputs.source-checksum }}
+        run: |
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir published \
+            --pattern "$SOURCE_NAME" \
+            --pattern "$SOURCE_CHECKSUM_NAME"
+
       - name: Verify release asset set and SHA-256
         shell: bash
         env:
@@ -89,6 +111,9 @@ jobs:
           DEB_NAME: ${{ steps.assets.outputs.deb }}
           DEB_CHECKSUM_NAME: ${{ steps.assets.outputs.deb-checksum }}
           HAS_DEB: ${{ steps.assets.outputs.has-deb }}
+          SOURCE_NAME: ${{ steps.assets.outputs.source }}
+          SOURCE_CHECKSUM_NAME: ${{ steps.assets.outputs.source-checksum }}
+          HAS_SOURCE: ${{ steps.assets.outputs.has-source }}
           EXPECTED_COUNT: ${{ steps.assets.outputs.expected-count }}
         run: |
           gh release view "$RELEASE_TAG" \
@@ -100,12 +125,18 @@ jobs:
             --arg deb "$DEB_NAME" \
             --arg deb_checksum "$DEB_CHECKSUM_NAME" \
             --arg has_deb "$HAS_DEB" \
+            --arg source "$SOURCE_NAME" \
+            --arg source_checksum "$SOURCE_CHECKSUM_NAME" \
+            --arg has_source "$HAS_SOURCE" \
             --argjson expected_count "$EXPECTED_COUNT" \
             '.assets | length == $expected_count and
               ([.[].name] | sort) ==
-                (if $has_deb == "true" then
-                  [$archive, $checksum, $deb, $deb_checksum] | sort
-                else [$archive, $checksum] | sort end) and
+                ((if $has_deb == "true" then
+                    [$archive, $checksum, $deb, $deb_checksum]
+                  else [$archive, $checksum] end) +
+                 (if $has_source == "true" then
+                    [$source, $source_checksum]
+                  else [] end) | sort) and
               all(.[].digest; startswith("sha256:"))' \
             release-assets.json
           checksum_digest="$(jq -r \
@@ -125,6 +156,19 @@ jobs:
             test "$(wc -l < "published/$DEB_CHECKSUM_NAME")" -eq 1
             (cd published && sha256sum -c "$DEB_CHECKSUM_NAME")
           fi
+          if test "$HAS_SOURCE" = true; then
+            source_checksum_digest="$(jq -r \
+              --arg name "$SOURCE_CHECKSUM_NAME" \
+              '.assets[] | select(.name == $name) | .digest |
+                sub("^sha256:"; "")' release-assets.json)"
+            echo "$source_checksum_digest  published/$SOURCE_CHECKSUM_NAME" |
+              sha256sum -c -
+            test "$(wc -l < "published/$SOURCE_CHECKSUM_NAME")" -eq 1
+            (cd published && sha256sum -c "$SOURCE_CHECKSUM_NAME")
+            expected_luna_commit="$(node -p \
+              "require('./compatibility/luna.json').luna.source_commit")"
+            test "$(cat "published/$SOURCE_NAME")" = "$expected_luna_commit"
+          fi
 
       - name: Verify GitHub artifact attestations
         shell: bash
@@ -134,10 +178,16 @@ jobs:
           DEB_NAME: ${{ steps.assets.outputs.deb }}
           DEB_CHECKSUM_NAME: ${{ steps.assets.outputs.deb-checksum }}
           HAS_DEB: ${{ steps.assets.outputs.has-deb }}
+          SOURCE_NAME: ${{ steps.assets.outputs.source }}
+          SOURCE_CHECKSUM_NAME: ${{ steps.assets.outputs.source-checksum }}
+          HAS_SOURCE: ${{ steps.assets.outputs.has-source }}
         run: |
           assets=("$ARCHIVE_NAME" "$CHECKSUM_NAME")
           if test "$HAS_DEB" = true; then
             assets+=("$DEB_NAME" "$DEB_CHECKSUM_NAME")
+          fi
+          if test "$HAS_SOURCE" = true; then
+            assets+=("$SOURCE_NAME" "$SOURCE_CHECKSUM_NAME")
           fi
           for asset in "${assets[@]}"; do
             gh attestation verify "published/$asset" \

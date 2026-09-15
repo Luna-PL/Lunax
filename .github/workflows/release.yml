@@ -33,11 +33,11 @@ jobs:
       - name: Verify synchronized versions
         run: cmake -DRELEASE_TAG="$RELEASE_TAG" -P scripts/release/verify_metadata.cmake
 
-      - name: Read Luna compatibility baseline
+      - name: Read exact Luna compatibility baseline
         id: compatibility
         shell: bash
         run: |
-          luna_ref="$(node -p "require('./compatibility/luna.json').luna.release_tag")"
+          luna_ref="$(node -p "require('./compatibility/luna.json').luna.source_commit")"
           test -n "$luna_ref"
           echo "luna_ref=$luna_ref" >> "$GITHUB_OUTPUT"
 
@@ -123,6 +123,10 @@ jobs:
             --format=gnutar "$package")
           (cd dist && sha256sum "${package}.tar.gz" > \
             "${package}.tar.gz.sha256")
+          printf '%s\n' '${{ needs.release-metadata.outputs.luna_ref }}' \
+            > dist/LUNA-SOURCE-COMMIT
+          (cd dist && sha256sum LUNA-SOURCE-COMMIT > \
+            LUNA-SOURCE-COMMIT.sha256)
 
       - name: Verify staged package
         shell: bash
@@ -130,6 +134,9 @@ jobs:
           version="${RELEASE_TAG#v}"
           package="lunax-${version}-ubuntu-24.04-x86_64"
           (cd dist && sha256sum -c "${package}.tar.gz.sha256")
+          (cd dist && sha256sum -c LUNA-SOURCE-COMMIT.sha256)
+          test "$(cat dist/LUNA-SOURCE-COMMIT)" = \
+            '${{ needs.release-metadata.outputs.luna_ref }}'
           mkdir -p package-verify
           (cd package-verify && cmake -E tar xzf "../dist/${package}.tar.gz")
           test "$(package-verify/$package/bin/lunax version)" = "lunax ${version}"
@@ -184,6 +191,7 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: |
+            dist/LUNA-SOURCE-COMMIT
             dist/*.tar.gz
             dist/*.deb
             dist/*.sha256
@@ -191,7 +199,7 @@ jobs:
       - name: Publish immutable prerelease with gh
         run: |
           gh release create "$RELEASE_TAG" \
-            dist/*.tar.gz dist/*.deb dist/*.sha256 \
+            dist/LUNA-SOURCE-COMMIT dist/*.tar.gz dist/*.deb dist/*.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --title "Lunax $RELEASE_TAG" \
             --generate-notes \

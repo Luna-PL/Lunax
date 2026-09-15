@@ -16,7 +16,9 @@ Lunax therefore uses two explicit package classes:
 CI builds the Debian package, inspects its control metadata, requires the Ubuntu 24.04
 `libcurl4t64` and `tar` dependencies, extracts it without privileged installation, and runs the
 packaged binary. Releases attest every package and checksum through the repository release
-workflow, and clean consumer verification requires those GitHub/Sigstore attestations. The
+workflow. Lunax 0.2 additionally publishes checksummed and attested `LUNA-SOURCE-COMMIT`
+evidence for its exact compiler candidate, and clean consumer verification requires those
+GitHub/Sigstore attestations. The
 `.deb` is not added retroactively to the immutable v0.1.0 release.
 
 ## Deferred portable archive

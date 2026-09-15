@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "lunax_version": "0.1.2",
+  "lunax_version": "0.2.0",
   "release_tier": "mvp-prerelease",
   "luna": {
-    "language_version": "0.2.1",
-    "release_tag": "v0.2.1"
+    "language_version": "0.3.0",
+    "release_tag": "v0.3.0",
+    "source_commit": "71d40c5144bee7292cb7a390fdfda71cd7e59469"
   },
   "backend_abi": 1,
   "published_platforms": [

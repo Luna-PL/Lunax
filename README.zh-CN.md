@@ -4,9 +4,9 @@ Lunax 是 Luna 生态管理工具，用于安装和选择 Luna 编译器、工�
 Luna 的环境变量，通过可替换后端下载产物，并把自身未占用的 CLI 命令原样转发给当前
 选中的 Luna 编译器。
 
-这是一个明确标注边界的 Luna 0.2 MVP。命令分发器使用 Luna 编写；由于当前 Std 尚不能
+这是一个 Luna 0.3 迁移版本。命令分发器使用 Luna 编写；由于当前 Std 尚不能
 安全表达 argv 索引、进程启动、owned path、动态库和 libcurl variadic 调用，仓库暂时包含
-一个很窄的 native host library。随着 Luna 0.3 和标准库成熟，该兼容层应逐步删除。
+一个很窄的 native host library。随着标准库成熟，该兼容层应逐步缩小。
 
 Lunax 采用 MIT 或 Apache-2.0 双许可证。发布兼容性由 `compatibility/luna.json` 声明。
 首个预编译发布目标限定为 Ubuntu 24.04 x86_64，并依赖系统 glibc、`libcurl.so.4` 与
@@ -28,7 +28,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-生成的程序位于 `build/luna-src/org.luna.lunax`。
+生成的程序位于 `build/luna-src/build/native/lunax`。
 
 ## 命令
 

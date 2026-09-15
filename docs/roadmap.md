@@ -12,6 +12,8 @@
 
 ## Luna 0.3 migration
 
+- build as an explicit Luna 0.3 application package and bind releases to an exact
+  validated Luna source commit;
 - replace argv/path/process helpers with Luna Std;
 - replace borrowed `cstr` command data with owned Luna String/Vec;
 - expose structured `Result` errors instead of integer host statuses;

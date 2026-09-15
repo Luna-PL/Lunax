@@ -51,26 +51,30 @@ function(run_lunax expected_result fixture_archive)
     set(LUNAX_LAST_ERROR "${command_error}" PARENT_SCOPE)
 endfunction()
 
-run_lunax(0 "${compiler_archive}" install compiler 0.2.1
+run_lunax(0 "${compiler_archive}" install compiler 0.3.0
           https://fixtures.invalid/luna.tar "${compiler_sha256}")
-set(installed_luna "${home}/compilers/0.2.1/bin/${luna_name}")
+set(installed_luna "${home}/compilers/0.3.0/bin/${luna_name}")
 if(NOT EXISTS "${installed_luna}")
     message(FATAL_ERROR "compiler was not atomically published")
 endif()
 
 run_lunax(0 "${compiler_archive}" list compiler)
-if(NOT LUNAX_LAST_OUTPUT MATCHES "compiler 0\\.2\\.1")
+if(NOT LUNAX_LAST_OUTPUT MATCHES "compiler 0\\.3\\.0")
     message(FATAL_ERROR "installed compiler was not listed: ${LUNAX_LAST_OUTPUT}")
 endif()
-run_lunax(0 "${compiler_archive}" use compiler 0.2.1)
+run_lunax(0 "${compiler_archive}" use compiler 0.3.0)
 run_lunax(0 "${compiler_archive}" which)
 string(STRIP "${LUNAX_LAST_OUTPUT}" selected_compiler)
-if(NOT selected_compiler STREQUAL installed_luna)
+cmake_path(CONVERT "${selected_compiler}" TO_CMAKE_PATH_LIST
+           selected_compiler_normalized NORMALIZE)
+cmake_path(CONVERT "${installed_luna}" TO_CMAKE_PATH_LIST
+           installed_luna_normalized NORMALIZE)
+if(NOT selected_compiler_normalized STREQUAL installed_luna_normalized)
     message(FATAL_ERROR
         "managed compiler selection mismatch: ${selected_compiler}")
 endif()
 run_lunax(0 "${compiler_archive}" --version)
-if(NOT LUNAX_LAST_OUTPUT MATCHES "Luna 0\\.2\\.1")
+if(NOT LUNAX_LAST_OUTPUT MATCHES "Luna 0\\.3\\.0")
     message(FATAL_ERROR "managed compiler forwarding failed: ${LUNAX_LAST_OUTPUT}")
 endif()
 

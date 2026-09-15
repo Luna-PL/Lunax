@@ -5,7 +5,7 @@ an implementation language rather than only as a compiler fixture. Its durable b
 
 ```text
 Luna CLI policy
-  -> narrow Lunax host C ABI (temporary for Luna 0.2)
+  -> narrow Lunax host C ABI (temporary during the Luna 0.3 migration)
      -> process/filesystem/environment services
      -> download backend ABI v1
         -> builtin libcurl backend (default)
@@ -15,7 +15,7 @@ Luna CLI policy
 
 The command dispatcher, argument policy, Luna CLI inheritance, and user-facing behavior live
 in `src/*.luna`. `native/src/Host.cpp` is compatibility infrastructure for capabilities that
-Luna 0.2 cannot yet express safely: indexing `argv`, owned path construction, process spawn,
+the current Luna Std cannot yet express safely: indexing `argv`, owned path construction, process spawn,
 variadic libcurl options, and dynamic-library symbol lookup. It must shrink as Std gains these
 facilities; it must not become a second CLI implementation.
 
