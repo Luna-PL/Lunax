@@ -2,7 +2,7 @@ package org.luna.lunax;
 module commands;
 
 fn usage() -> unit {
-    host::out_line("Lunax 0.2.0 - Luna ecosystem manager");
+    host::out_line("Lunax 0.2.1 - Luna ecosystem manager");
     host::out_line("");
     host::out_line("Usage:");
     host::out_line("  lunax help");
@@ -40,7 +40,7 @@ export fn run() -> i32 {
     }
     if host::equals(command, "version") ||
        host::equals(command, "--lunax-version") {
-        host::out_line("lunax 0.2.0");
+        host::out_line("lunax 0.2.1");
         return 0;
     }
     if host::equals(command, "env") {

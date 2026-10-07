@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-10-07
+
+- Updated the compatibility pin to the validated Luna 0.3.0 candidate
+  `1db2931cd76e015d28954dccaa0fe68f7f94329b`.
+- Synchronized Lunax package and CLI metadata for the compatibility refresh.
+
 ## 0.2.0 - 2026-09-15
 
 - Migrated the package manifest and build output contract to Luna 0.3 applications.
