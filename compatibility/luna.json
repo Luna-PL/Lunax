@@ -5,7 +5,7 @@
   "luna": {
     "language_version": "0.3.0",
     "release_tag": "v0.3.0",
-    "source_commit": "129d593a8df776cf6b9d62835267b702cfa38dd8"
+    "source_commit": "06a438ed8f8d7110d805fe1ee4fa55972b97f97f"
   },
   "backend_abi": 1,
   "published_platforms": [
